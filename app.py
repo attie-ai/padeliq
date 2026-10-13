@@ -11,8 +11,8 @@ from engine import metadata, frame_at, process, calibration
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT/'local_data'
 DATA.mkdir(exist_ok=True)
-st.set_page_config(page_title='PadelIQ',page_icon='🎾',layout='wide')
-st.title('🎾 PadelIQ v0.1')
+st.set_page_config(page_title='PadelTrace',page_icon='🎾',layout='wide')
+st.title('🎾 PadelTrace v0.1')
 st.caption('Local video analysis • manual identity selection • experimental tracking')
 st.info('Select Charlotte yourself using her white top and cap. Review the output: a tracker ID can silently switch people. If a detection disappears or jumps, Charlotte labeling stops for the rest of that segment.')
 upload = st.file_uploader('Upload a recording (stored on this Mac)',type=['mp4','mov','m4v','avi'])
@@ -116,5 +116,5 @@ if 'run' in st.session_state:
     archive = io.BytesIO()
     with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as z:
         for file in directory.iterdir(): z.write(file,file.name)
-    st.download_button('Download all results (ZIP)',archive.getvalue(),'padeliq-results.zip','application/zip')
+    st.download_button('Download all results (ZIP)',archive.getvalue(),'padeltrace-results.zip','application/zip')
     st.caption(f'Results are also saved locally at {directory}. Delete local_data to remove uploaded recordings and runs. Large downloads consume memory; use the local files for very long recordings.')

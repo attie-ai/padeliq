@@ -24,14 +24,14 @@ def build(destination):
             ast.parse(file.read_text(), filename=name)
     shutil.copyfile(ROOT/'index.html', destination/'index.html')
     (destination/'.nojekyll').touch()
-    archive = destination/'PadelIQ-v0.1.zip'
+    archive = destination/'PadelTrace-v0.1.zip'
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as z:
         for name in PROJECT_FILES:
-            z.write(ROOT/name, 'PadelIQ/'+name)
+            z.write(ROOT/name, 'PadelTrace/'+name)
     with zipfile.ZipFile(archive) as z:
         if z.testzip() is not None:
             raise RuntimeError('Download archive verification failed.')
-        assert set(z.namelist()) == {'PadelIQ/'+name for name in PROJECT_FILES}
+        assert set(z.namelist()) == {'PadelTrace/'+name for name in PROJECT_FILES}
     print(f'Built website and verified Mac download in {destination}')
 
 if __name__ == '__main__':

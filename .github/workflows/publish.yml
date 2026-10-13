@@ -1,4 +1,4 @@
-name: Check and publish PadelIQ
+name: Check and publish PadelTrace
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: padeliq-${{ github.ref }}
+  group: padeltrace-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

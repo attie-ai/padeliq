@@ -1,4 +1,4 @@
-# PadelIQ v0.1 — local Mac prototype
+# PadelTrace v0.1 — local Mac prototype
 
 Select Charlotte on a video frame, track people with Ultralytics YOLO + ByteTrack, download an annotated segment and position CSV, and optionally estimate court occupancy. Designed for an Apple M3 Mac; CPU is the compatibility default and MPS is selectable.
 
@@ -78,7 +78,7 @@ Official API references: [Ultralytics tracking](https://docs.ultralytics.com/mod
 
 ## Automatic GitHub publishing
 
-The public website is at https://attie-ai.github.io/padeliq/ once deployment succeeds. Every push to `main` runs synthetic pipeline checks, builds the website and a fresh downloadable Mac project from an explicit source-file allowlist, then deploys with GitHub Pages. Pull requests run checks without deploying. Failed checks prevent publication of that update.
+The public website is configured for https://www.padeltrace.co.za/. Availability depends on domain DNS and GitHub HTTPS readiness. Every push to `main` runs synthetic pipeline checks, builds the website and a fresh downloadable Mac project from an explicit source-file allowlist, then deploys with GitHub Pages. Pull requests run checks without deploying. Failed checks prevent publication of that update.
 
 See `.github/workflows/publish.yml`. The cloud runner only processes generated synthetic test frames; user recordings and local results are excluded. Website deployment does not update or restart the app installed on your Mac. Download the latest project to update it, or pull the repository and restart your local app.
 
