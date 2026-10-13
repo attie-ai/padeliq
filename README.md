@@ -75,3 +75,11 @@ These gates cannot detect every identity swap, especially close crossings. Revie
 See TESTING.md for acceptance checks and recorded verification. Dependency ranges allow compatible bug fixes but are not a reproducible lockfile; after successful installation save your exact environment with `python -m pip freeze > installed-requirements.txt`.
 
 Official API references: [Ultralytics tracking](https://docs.ultralytics.com/modes/track/), [Streamlit uploads](https://docs.streamlit.io/develop/api-reference/widgets/st.file_uploader), [Streamlit downloads](https://docs.streamlit.io/develop/api-reference/widgets/st.download_button). Ultralytics has AGPL-3.0 and commercial licensing options; review its license before redistribution or commercial deployment.
+
+## Automatic GitHub publishing
+
+The public website is at https://attie-ai.github.io/padeliq/ once deployment succeeds. Every push to `main` runs synthetic pipeline checks, builds the website and a fresh downloadable Mac project from an explicit source-file allowlist, then deploys with GitHub Pages. Pull requests run checks without deploying. Failed checks prevent publication of that update.
+
+See `.github/workflows/publish.yml`. The cloud runner only processes generated synthetic test frames; user recordings and local results are excluded. Website deployment does not update or restart the app installed on your Mac. Download the latest project to update it, or pull the repository and restart your local app.
+
+To reproduce website packaging locally, run `python scripts/package_site.py --output dist`. The output contains the page and the generated download ZIP, with no credentials, Git metadata, recordings or processing results.
