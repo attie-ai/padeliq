@@ -10,6 +10,7 @@ PROJECT_FILES = [
     'app.py', 'engine.py', 'geometry.py', 'requirements.txt',
     'README.md', 'TESTING.md', 'VERIFICATION.md', '.gitignore',
     '.streamlit/config.toml', 'tests/test_geometry.py', 'tests/test_pipeline.py',
+    'index.html', 'scripts/package_site.py', '.github/workflows/publish.yml',
 ]
 
 def build(destination):
