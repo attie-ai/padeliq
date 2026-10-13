@@ -11,3 +11,7 @@ Checks performed in an isolated macOS arm64 environment with Python 3.14.7, Stre
 Not verified: original Charlotte recording (file unavailable), pretrained-model download/detection on that recording, M3/MPS performance, full browser interaction and video playback, and FFmpeg H.264 conversion (FFmpeg was absent). The video pipeline tests used deterministic synthetic detections instead of YOLO outputs. Functional tests cannot establish real-world identity reliability.
 
 A source-code prototype is delivered, not a packaged macOS application. Install and run it using README.md, then follow TESTING.md with the actual recording before interpreting its outputs.
+
+## Tracking diagnostics update
+
+Ten synthetic functional tests passed after adding a 0.5-second missing-detection tolerance and explicit loss diagnostics. Checks include blank coordinates during a short gap, same-ID recovery, refusal to adopt a different ID, timeout, sticky motion/overlap rejection, and video/heatmap output. This does not establish the cause of the reported frame-6002 failure or validate recovery on the user recording; rerun that segment and inspect the new reason and first-issue image.

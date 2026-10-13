@@ -36,10 +36,10 @@ class Pipeline(unittest.TestCase):
         for _ in range(5): writer.write(np.zeros((120,160,3),dtype=np.uint8))
         writer.release()
     def tearDown(self): self.temp.cleanup()
-    def run_sequence(self, sequence, points=None):
+    def run_sequence(self, sequence, points=None, gap_seconds=.5):
         FakeModel.sequence=sequence
         with patch.dict(sys.modules,{'ultralytics':SimpleNamespace(YOLO=FakeModel)}):
-            return process(self.video,self.root/'run',1,3,[20,20,40,80],'fake','cpu',.25,points)
+            return process(self.video,self.root/'run',1,3,[20,20,40,80],'fake','cpu',.25,points,gap_seconds=gap_seconds)
     def test_output_and_heatmap(self):
         summary=self.run_sequence([([7],[[20,20,40,80]])]*3,[[0,0],[159,0],[159,119],[0,119]])
         self.assertEqual(summary['processed_frames'],3)
@@ -49,15 +49,27 @@ class Pipeline(unittest.TestCase):
         with (self.root/'run'/'positions.csv').open() as f: rows=list(csv.DictReader(f))
         self.assertEqual(rows[0]['frame'],'1')
         self.assertEqual(rows[0]['seconds'],'0.1')
-    def test_missing_stays_lost_after_return(self):
+    def test_brief_missing_same_id_recovers_without_filling_gap(self):
         summary=self.run_sequence([([7],[[20,20,40,80]]),([],[]),([7],[[20,20,40,80]])])
-        self.assertEqual(summary['first_loss_frame'],2)
-        self.assertEqual(summary['tracked_frames'],1)
+        self.assertIsNone(summary['first_loss_frame'])
+        self.assertEqual(summary['tracked_frames'],2)
+        self.assertEqual(summary['recovered_gaps'],1)
         with (self.root/'run'/'positions.csv').open() as f: rows=list(csv.DictReader(f))
-        self.assertEqual(rows[-1]['foot_x'],'')
+        self.assertEqual(rows[1]['foot_x'],'')
+        self.assertEqual(rows[-1]['status'],'tracked_unverified')
+    def test_missing_timeout_does_not_adopt_other_id(self):
+        summary=self.run_sequence([([7],[[20,20,40,80]]),([8],[[20,20,40,80]]),([8],[[20,20,40,80]])],gap_seconds=.1)
+        self.assertEqual(summary['first_loss_frame'],3)
+        self.assertEqual(summary['first_loss_reason'],'selected_tracker_id_missing_timeout')
+        self.assertEqual(summary['tracked_frames'],1)
+    def test_suspicious_jump_stays_lost(self):
+        summary=self.run_sequence([([7],[[20,20,40,80]]),([7],[[100,20,120,80]]),([7],[[20,20,40,80]])])
+        self.assertEqual(summary['first_loss_reason'],'implausible_box_motion_or_scale')
+        self.assertEqual(summary['tracked_frames'],1)
     def test_overlap_stops_identity(self):
         summary=self.run_sequence([([7],[[20,20,40,80]]),([7,8],[[20,20,40,80],[22,20,42,80]]),([7],[[20,20,40,80]])])
         self.assertEqual(summary['first_loss_frame'],2)
+        self.assertEqual(summary['first_loss_reason'],'overlap_with_another_player')
     def test_ambiguous_selection_rejected(self):
         with self.assertRaises(ValueError):
             self.run_sequence([([7,8],[[20,20,40,80],[22,20,42,80]])]*3)

@@ -47,7 +47,7 @@ def calibration(points, width, height):
     return cv2.getPerspectiveTransform(p, np.float32([[0,0],[10,0],[10,20],[0,20]]))
 
 
-def process(path, output, start, end, selected, model_path, device, conf, points=None, progress=None):
+def process(path, output, start, end, selected, model_path, device, conf, points=None, progress=None, gap_seconds=0.5):
     from ultralytics import YOLO
     info = metadata(path)
     if not 0 <= start <= end < info['frames']:
@@ -63,6 +63,9 @@ def process(path, output, start, end, selected, model_path, device, conf, points
     raw = output/'annotated.mp4'
     writer = cv2.VideoWriter(str(raw), cv2.VideoWriter_fourcc(*'mp4v'), info['fps'], (info['width'],info['height']))
     rows, target, previous, lost = [], None, None, False
+    missing_frames, recovered_gaps, loss_reason = 0, 0, ""
+    max_missing_frames = max(0, round(info["fps"] * gap_seconds))
+    issue_saved = False
     if not writer.isOpened():
         cap.release()
         raise RuntimeError('OpenCV could not create the output video.')
@@ -80,17 +83,37 @@ def process(path, output, start, end, selected, model_path, device, conf, points
                     raise ValueError('Selected player could not be matched uniquely. Choose another clear frame.')
                 _, target, previous = ranked[0]
             match = next((b for t,b in candidates if t == target), None)
-            if not lost and (match is None or not plausible(previous, match) or any(iou(match,b) > .35 for t,b in candidates if t != target)):
-                lost = True
-            status = 'identity_lost' if lost else 'tracked_unverified'
-            row = dict(frame=idx, seconds=idx/info['fps'], status=status, tracker_id=target, foot_x='', foot_y='', court_x_m='', court_y_m='')
+            reason = loss_reason if lost else ''
+            active = False
+            if not lost:
+                if match is None:
+                    missing_frames += 1
+                    reason = 'selected_tracker_id_missing'
+                    if missing_frames > max_missing_frames:
+                        lost = True
+                        loss_reason = reason = 'selected_tracker_id_missing_timeout'
+                elif not plausible(previous, match):
+                    lost = True
+                    loss_reason = reason = 'implausible_box_motion_or_scale'
+                elif any(iou(match,b) > .35 for t,b in candidates if t != target):
+                    lost = True
+                    loss_reason = reason = 'overlap_with_another_player'
+                else:
+                    if missing_frames:
+                        recovered_gaps += 1
+                    missing_frames = 0
+                    active = True
+            status = 'identity_lost' if lost else ('tracked_unverified' if active else 'temporarily_missing')
+            row = dict(frame=idx, seconds=idx/info['fps'], status=status, tracker_id=target,
+                       reason=reason, visible_tracker_ids=';'.join(str(t) for t,b in candidates),
+                       foot_x='', foot_y='', court_x_m='', court_y_m='')
             for t,b in candidates:
                 x1,y1,x2,y2 = map(int,b)
-                active = not lost and t==target
-                color = (40,210,40) if active else (150,150,150)
+                selected_visible = active and t==target
+                color = (40,210,40) if selected_visible else (150,150,150)
                 cv2.rectangle(frame,(x1,y1),(x2,y2),color,2)
-                cv2.putText(frame, f'Charlotte? ID {t}' if active else f'ID {t}', (x1,max(20,y1-8)),cv2.FONT_HERSHEY_SIMPLEX,.6,color,2)
-            if not lost:
+                cv2.putText(frame, f'Charlotte? ID {t}' if selected_visible else f'ID {t}', (x1,max(20,y1-8)),cv2.FONT_HERSHEY_SIMPLEX,.6,color,2)
+            if active:
                 previous = match
                 x,y = float((match[0]+match[2])/2),float(match[3])
                 row.update(foot_x=x,foot_y=y)
@@ -99,7 +122,11 @@ def process(path, output, start, end, selected, model_path, device, conf, points
                     if np.isfinite(xy).all() and 0<=xy[0]<=10 and 0<=xy[1]<=20:
                         row.update(court_x_m=float(xy[0]),court_y_m=float(xy[1]))
             else:
-                cv2.putText(frame,'IDENTITY LOST - reselect in a new segment',(15,35),cv2.FONT_HERSHEY_SIMPLEX,.7,(0,0,255),2)
+                label = 'IDENTITY LOST' if lost else 'TEMPORARILY MISSING - positions excluded'
+                cv2.putText(frame,label,(15,35),cv2.FONT_HERSHEY_SIMPLEX,.6,(0,0,255),2)
+            if reason and not issue_saved:
+                cv2.imwrite(str(output/'tracking_issue.jpg'), frame)
+                issue_saved = True
             writer.write(frame)
             rows.append(row)
             if progress and (idx-start)%10==0:
@@ -128,7 +155,7 @@ def process(path, output, start, end, selected, model_path, device, conf, points
         im=ax.imshow(hist.T/info['fps'],origin='lower',extent=[0,10,0,20],cmap='magma',aspect='equal')
         ax.axhline(10,color='white'); ax.set(xlabel='Court x (m)',ylabel='Court y (m)',title='Estimated occupancy — unverified tracking')
         fig.colorbar(im,ax=ax,label='Seconds per bin'); fig.savefig(output/'heatmap.png',dpi=150,bbox_inches='tight'); plt.close(fig)
-    summary = dict(video=raw.name,browser_playable=playable,start_frame=start,end_frame=end,processed_frames=len(rows),tracked_frames=sum(r['status']=='tracked_unverified' for r in rows),first_loss_frame=next((r['frame'] for r in rows if r['status']=='identity_lost'),None),heatmap_samples=len(valid),device=device,model=model_path,confidence=conf,calibration=points,limits='Tracker identity is unverified. Foot point is box bottom-center. No automatic re-identification. Fixed-camera planar court only. Output has no audio.')
+    summary = dict(video=raw.name,browser_playable=playable,start_frame=start,end_frame=end,processed_frames=len(rows),tracked_frames=sum(r['status']=='tracked_unverified' for r in rows),first_loss_frame=next((r['frame'] for r in rows if r['status']=='identity_lost'),None),first_loss_reason=loss_reason or None,first_uncertain_frame=next((r['frame'] for r in rows if r['reason']),None),temporarily_missing_frames=sum(r['status']=='temporarily_missing' for r in rows),recovered_gaps=recovered_gaps,gap_tolerance_seconds=gap_seconds,heatmap_samples=len(valid),device=device,model=model_path,confidence=conf,calibration=points,limits='Tracker identity is unverified. Foot point is box bottom-center. No automatic re-identification. Fixed-camera planar court only. Output has no audio.')
     (output/'summary.json').write_text(json.dumps(summary,indent=2))
     if progress: progress(1.)
     return summary

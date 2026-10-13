@@ -52,14 +52,15 @@ Heatmap bins represent seconds of observed, unverified tracking inside the calib
 
 - `annotated_h264.mp4` when FFmpeg succeeds, otherwise `annotated.mp4`: segment at source frame rate and resolution, without audio.
 - `positions.csv`: original frame index and source-relative seconds; status, tracker ID, image foot point and optional court coordinates. Lost intervals have blank coordinates. Tracker ID on lost rows records the original selected ID, not a verified current identity.
-- `summary.json`: settings, calibration, frame counts, first loss and explicit limitations.
+- `summary.json`: settings, calibration, frame counts, first loss frame and reason, temporary missing frames, and recovered gaps.
+- `tracking_issue.jpg`: annotated first frame with a missing ID or rejected box, when an issue occurs. The CSV also records each row’s reason and visible tracker IDs.
 - `heatmap.png`: only generated when a valid calibration and at least one in-court sample exist.
 
 Downloads and processing use memory and disk. Start with short segments. Upload limit is 2 GB; a local path avoids the upload copy. The UI is synchronous during processing and has no in-app cancellation button. Stop the server with Control-C if needed; failed/interrupted runs can leave partial files, but are not presented as completed results. Delete `local_data/` after stopping the app to remove recordings and results.
 
 ## Identity and honest limits
 
-ByteTrack associates detections; it does not recognize Charlotte. White clothing is a human selection cue, not a biometric or persistent identity model. Fresh tracker state is created for each run. Initial selection must uniquely overlap a tracked box. Missing selected IDs, implausible per-frame motion/scale changes and strong overlap with another player trigger permanent loss for that segment. This conservative policy intentionally rejects some recoverable occlusions.
+ByteTrack associates detections; it does not recognize Charlotte. White clothing is a human selection cue, not a biometric or persistent identity model. Fresh tracker state is created for each run. Initial selection must uniquely overlap a tracked box. Missing selected IDs pause labeling for up to 0.5 seconds. Only the same ID may resume, and only if its box passes the motion/scale and overlap checks. No positions are filled in during the gap. Longer gaps, implausible motion/scale changes and strong overlap trigger permanent loss for that segment. Same-ID recovery is still unverified and can silently follow a swapped identity; review it visually.
 
 These gates cannot detect every identity swap, especially close crossings. Review all output. There is no automatic re-identification, interpolation across gaps, shot/ball tracking, performance scoring or reliable coaching insight in v0.1. Person detection is trained for general scenes and may miss distant players or track spectators/reflections. Fixed frame-rate handling assumes an approximately constant-frame-rate recording; variable-frame-rate timestamps are approximate. Export to constant-frame-rate H.264 if timing accuracy matters.
 

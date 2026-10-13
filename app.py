@@ -14,7 +14,7 @@ DATA.mkdir(exist_ok=True)
 st.set_page_config(page_title='PadelTrace',page_icon='🎾',layout='wide')
 st.title('🎾 PadelTrace v0.1')
 st.caption('Local video analysis • manual identity selection • experimental tracking')
-st.info('Select Charlotte yourself using her white top and cap. Review the output: a tracker ID can silently switch people. If a detection disappears or jumps, Charlotte labeling stops for the rest of that segment.')
+st.info('Select Charlotte yourself using her white top and cap. Review the output: a tracker ID can silently switch people. Brief missing detections pause labeling for up to half a second. Only the same tracker ID can resume; prolonged gaps, suspicious jumps or overlaps require a new selection.')
 upload = st.file_uploader('Upload a recording (stored on this Mac)',type=['mp4','mov','m4v','avi'])
 local = st.text_input('Or enter an absolute local video path',value='/mnt/data/WhatsApp Video 2026-10-13 at 10.55.19.mp4')
 if upload is not None:
@@ -103,14 +103,16 @@ if 'run' in st.session_state:
     directory,summary = st.session_state.run
     directory = Path(directory)
     st.subheader('Latest completed segment')
+    if (directory/'tracking_issue.jpg').exists():
+        st.image(str(directory/'tracking_issue.jpg'),caption=f"First tracking issue at frame {summary.get('first_uncertain_frame')}. See the reason fields in the summary and CSV.",width='stretch')
     st.json(summary)
     if summary['first_loss_frame'] is not None:
-        st.warning(f"Identity was lost at frame {summary['first_loss_frame']}. Review around that point, choose a later clear start frame, detect players and select Charlotte again. Heatmap excludes the lost interval.")
+        st.warning(f"Identity was lost at frame {summary['first_loss_frame']}. Review around that point, choose a later clear start frame, detect players and select Charlotte again. Reason: {summary.get('first_loss_reason', 'not recorded by this older run')}. Heatmap excludes missing and lost intervals.")
     st.caption('This result belongs to the settings recorded above. Review the whole segment for silent identity swaps before trusting its heatmap.')
     if summary['browser_playable']: st.video(str(directory/summary['video']))
     else: st.info('Download the MP4 to play in VLC/QuickTime. Install FFmpeg before processing to enable a browser-compatible H.264 preview.')
     if (directory/'heatmap.png').exists(): st.image(str(directory/'heatmap.png'))
-    for name,mime in [(summary['video'],'video/mp4'),('positions.csv','text/csv'),('summary.json','application/json'),('heatmap.png','image/png')]:
+    for name,mime in [(summary['video'],'video/mp4'),('positions.csv','text/csv'),('summary.json','application/json'),('heatmap.png','image/png'),('tracking_issue.jpg','image/jpeg')]:
         file = directory/name
         if file.exists(): st.download_button('Download '+name,file.read_bytes(),file_name=name,mime=mime)
     archive = io.BytesIO()
