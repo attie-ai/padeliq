@@ -15,3 +15,8 @@ A source-code prototype is delivered, not a packaged macOS application. Install 
 ## Tracking diagnostics update
 
 Ten synthetic functional tests passed after adding a 0.5-second missing-detection tolerance and explicit loss diagnostics. Checks include blank coordinates during a short gap, same-ID recovery, refusal to adopt a different ID, timeout, sticky motion/overlap rejection, and video/heatmap output. This does not establish the cause of the reported frame-6002 failure or validate recovery on the user recording; rerun that segment and inspect the new reason and first-issue image.
+
+
+## Manual interval review update — 14 October 2026
+
+Sixteen automated tests passed, including saved detections after identity loss, combining manually selected IDs, blank missing/unassigned frames, exclusion of preview data from heatmaps, rejection of overlap/invalid ranges/changed sources, and Streamlit confirmation/add/export/remove interactions. Video exports and reviewed heatmaps were checked using a synthetic recording. Real padel identity joining remains subject to the user’s review; no automatic re-identification claim is made.

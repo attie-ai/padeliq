@@ -7,9 +7,9 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT_FILES = [
-    'app.py', 'engine.py', 'geometry.py', 'requirements.txt',
+    'app.py', 'engine.py', 'review.py', 'geometry.py', 'requirements.txt',
     'README.md', 'TESTING.md', 'VERIFICATION.md', '.gitignore',
-    '.streamlit/config.toml', 'tests/test_geometry.py', 'tests/test_pipeline.py',
+    '.streamlit/config.toml', 'tests/test_geometry.py', 'tests/test_pipeline.py', 'tests/test_review.py', 'tests/test_review_ui.py',
     'index.html', 'scripts/package_site.py', '.github/workflows/publish.yml',
 ]
 

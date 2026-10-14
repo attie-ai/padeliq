@@ -22,10 +22,10 @@ python -m streamlit run app.py --server.address 127.0.0.1
 
 Open http://127.0.0.1:8501. Keep Terminal running. Stop with Control-C. To restart, activate the same environment and run the last command from this folder.
 
-The first detection downloads `yolo11n.pt` if it is missing. Installation and that download require internet; subsequent inference runs locally. To prepare offline use, run:
+The first detection downloads `yolo11s.pt` if it is missing. Installation and that download require internet; subsequent inference runs locally. To prepare offline use, run:
 
 ```sh
-python -c 'from ultralytics import YOLO; YOLO("yolo11n.pt")'
+python -c 'from ultralytics import YOLO; YOLO("yolo11s.pt")'
 ```
 
 Keep the weights file and select its local path in the sidebar. No video is intentionally uploaded to a service. Streamlit binds to localhost, usage statistics are disabled, and files remain in `local_data/`. Ultralytics is a third-party dependency; this is not a hardened network-isolated deployment. Model loading may fetch missing weights. Use trusted weights only.
@@ -37,7 +37,7 @@ Keep the weights file and select its local path in the sidebar. No video is inte
 3. Click **Detect players on this frame**. Inspect the numbered boxes and explicitly choose Charlotte. If detection misses her, choose another frame or lower confidence. Numbers on this preview are selection numbers, not tracking IDs.
 4. Leave heatmap off on the first run. Click **Track this segment** and wait for progress to finish.
 5. Review the annotated video. Green boxes say `Charlotte?` because identity is unverified. Gray boxes are other tracked people. Output contains no audio. FFmpeg creates an H.264 preview when installed; otherwise the MP4 is downloadable but browser playback may fail. Try VLC for the fallback file.
-6. If identity loss is flagged, the rest of that segment is left unlabeled. Choose a later clear frame, detect and select Charlotte again, then process a new segment. Each run is independent. If you observe a silent swap, discard the affected run and use shorter segments ending before the swap. v0.1 does not repair or merge segments automatically.
+6. If identity loss is flagged, the rest of that segment is left unlabeled. Use **Join this player’s changing IDs** to inspect and confirm later intervals, or choose a new clear start frame for a separate run. Each run is independent. If you observe a silent swap, discard the affected run and use shorter segments ending before the swap. v0.1 does not repair or merge segments automatically.
 7. Save the ZIP or individual downloads. Previous runs remain under `local_data/runs/`; only the latest completed run is shown in the app.
 
 ## Court calibration and interpretation
@@ -51,6 +51,7 @@ Heatmap bins represent seconds of observed, unverified tracking inside the calib
 ## Outputs
 
 - `annotated_h264.mp4` when FFmpeg succeeds, otherwise `annotated.mp4`: segment at source frame rate and resolution, without audio.
+- `all_tracks.csv`: every visible tracker ID and bounding box for each processed frame, including after the original identity is lost. Required for manual interval review.
 - `positions.csv`: original frame index and source-relative seconds; status, tracker ID, image foot point and optional court coordinates. Lost intervals have blank coordinates. Tracker ID on lost rows records the original selected ID, not a verified current identity.
 - `summary.json`: settings, calibration, frame counts, first loss frame and reason, temporary missing frames, and recovered gaps.
 - `tracking_issue.jpg`: annotated first frame with a missing ID or rejected box, when an issue occurs. The CSV also records each row’s reason and visible tracker IDs.
@@ -84,3 +85,18 @@ The public website is configured for https://www.padeltrace.co.za/. Availability
 See `.github/workflows/publish.yml`. The cloud runner only processes generated synthetic test frames; user recordings and local results are excluded. Website deployment does not update or restart the app installed on your Mac. Download the latest project to update it, or pull the repository and restart your local app.
 
 To reproduce website packaging locally, run `python scripts/package_site.py --output dist`. The output contains the page and the generated download ZIP, with no credentials, Git metadata, recordings or processing results.
+
+
+## Join changing IDs with manual interval review
+
+The app now defaults to `yolo11s.pt` following the observed improvement in the user’s short test. Identity still needs human review.
+
+1. Process the required segment once with this updated app. Previous `positions.csv` files do not contain all player boxes; those older runs cannot be joined. A new run may assign different IDs, so use the IDs shown in that new output.
+2. Scroll to **Join this player’s changing IDs**. Choose an ID from the table. Set the frame interval using the range slider; narrow it if that ID switches players during its lifetime.
+3. Inspect the start/middle/end images and click **Create video preview of this interval**. Review the interval video or download it to check every part of the stretch. These images alone do not prove identity throughout.
+4. Check the confirmation box only when that exact interval belongs to your selected player, then click **Add confirmed interval**. Repeat for each later ID. Overlapping intervals are rejected; missing detections remain blank.
+5. Click **Build combined reviewed result**. No new YOLO inference is needed for this export. Download the reviewed video, positions CSV, confirmed interval manifest, and ZIP. If court calibration was enabled for the original processing run, a new heatmap uses only the confirmed in-court observations.
+
+Saved drafts are in `review_intervals.json` inside the run folder. After restarting, upload the same recording and open **Resume a saved processing run** to continue. Preserve `local_data/` to keep these files. Exported results use `human_confirmed`, `missing_detection`, and `unassigned` statuses. Human confirmation does not fix inaccurate boxes, foot estimates or calibration.
+
+The app does not automatically guess that two IDs are the same person. Intervals are scoped to one processed run and its source recording. They are not a permanent mapping from an ID number to a person, and this version does not combine separately processed runs.

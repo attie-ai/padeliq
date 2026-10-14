@@ -69,6 +69,9 @@ def process(path, output, start, end, selected, model_path, device, conf, points
     if not writer.isOpened():
         cap.release()
         raise RuntimeError('OpenCV could not create the output video.')
+    tracks_file = (output/'all_tracks.csv').open('w', newline='')
+    tracks_writer = csv.DictWriter(tracks_file, fieldnames=['frame','seconds','tracker_id','x1','y1','x2','y2'])
+    tracks_writer.writeheader()
     try:
         for idx in range(start, end+1):
             ok, frame = cap.read()
@@ -77,6 +80,8 @@ def process(path, output, start, end, selected, model_path, device, conf, points
             result = model.track(frame, persist=True, tracker='bytetrack.yaml', classes=[0], conf=conf, device=device, verbose=False)[0]
             boxes = result.boxes
             candidates = [] if boxes is None or boxes.id is None else list(zip(boxes.id.int().cpu().tolist(), boxes.xyxy.cpu().numpy()))
+            for tid, box in candidates:
+                tracks_writer.writerow(dict(frame=idx, seconds=idx/info['fps'], tracker_id=tid, **dict(zip(['x1','y1','x2','y2'], map(float,box)))))
             if idx == start:
                 ranked = sorted([(iou(selected,b),t,b) for t,b in candidates], key=lambda item:item[0], reverse=True)
                 if not ranked or ranked[0][0] < .5 or (len(ranked)>1 and ranked[1][0]>.3):
@@ -132,6 +137,7 @@ def process(path, output, start, end, selected, model_path, device, conf, points
             if progress and (idx-start)%10==0:
                 progress((idx-start+1)/(end-start+1))
     finally:
+        tracks_file.close()
         writer.release()
         cap.release()
     with (output/'positions.csv').open('w',newline='') as f:
@@ -155,7 +161,7 @@ def process(path, output, start, end, selected, model_path, device, conf, points
         im=ax.imshow(hist.T/info['fps'],origin='lower',extent=[0,10,0,20],cmap='magma',aspect='equal')
         ax.axhline(10,color='white'); ax.set(xlabel='Court x (m)',ylabel='Court y (m)',title='Estimated occupancy — unverified tracking')
         fig.colorbar(im,ax=ax,label='Seconds per bin'); fig.savefig(output/'heatmap.png',dpi=150,bbox_inches='tight'); plt.close(fig)
-    summary = dict(video=raw.name,browser_playable=playable,start_frame=start,end_frame=end,processed_frames=len(rows),tracked_frames=sum(r['status']=='tracked_unverified' for r in rows),first_loss_frame=next((r['frame'] for r in rows if r['status']=='identity_lost'),None),first_loss_reason=loss_reason or None,first_uncertain_frame=next((r['frame'] for r in rows if r['reason']),None),temporarily_missing_frames=sum(r['status']=='temporarily_missing' for r in rows),recovered_gaps=recovered_gaps,gap_tolerance_seconds=gap_seconds,heatmap_samples=len(valid),device=device,model=model_path,confidence=conf,calibration=points,limits='Tracker identity is unverified. Foot point is box bottom-center. No automatic re-identification. Fixed-camera planar court only. Output has no audio.')
+    summary = dict(all_tracks='all_tracks.csv',fps=info['fps'],source_size=Path(path).stat().st_size,source_mtime_ns=Path(path).stat().st_mtime_ns,video=raw.name,browser_playable=playable,start_frame=start,end_frame=end,processed_frames=len(rows),tracked_frames=sum(r['status']=='tracked_unverified' for r in rows),first_loss_frame=next((r['frame'] for r in rows if r['status']=='identity_lost'),None),first_loss_reason=loss_reason or None,first_uncertain_frame=next((r['frame'] for r in rows if r['reason']),None),temporarily_missing_frames=sum(r['status']=='temporarily_missing' for r in rows),recovered_gaps=recovered_gaps,gap_tolerance_seconds=gap_seconds,heatmap_samples=len(valid),device=device,model=model_path,confidence=conf,calibration=points,limits='Tracker identity is unverified. Foot point is box bottom-center. No automatic re-identification. Fixed-camera planar court only. Output has no audio.')
     (output/'summary.json').write_text(json.dumps(summary,indent=2))
     if progress: progress(1.)
     return summary

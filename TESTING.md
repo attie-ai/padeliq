@@ -31,3 +31,13 @@ The prototype is accepted when installation, manual selection, short segment pro
 ## Development verification
 
 The supplied original video was absent at its referenced path. Real-video detection, ByteTrack identity quality and M3/MPS performance remain unverified. See the accompanying verification record for checks actually run in the development environment.
+
+
+## Manual interval review acceptance
+
+- Process a crossing segment and confirm `all_tracks.csv` includes later player IDs after the original ID is lost.
+- Choose an ID, inspect the interval preview, and trim its range. Confirmation must be unchecked for a newly chosen interval; no range is accepted by default.
+- Add intervals spanning successive IDs belonging to the same player. Reject overlapping ranges, invalid frames and nonexistent IDs. Remove an accepted interval and verify an earlier combined result is invalidated.
+- Export the complete original segment: only accepted detections have coordinates. Missing detections and unassigned frames remain blank, and only confirmed in-court samples contribute to the reviewed heatmap.
+- Restart the app, upload the same recording and open the saved run. Confirm draft intervals persist. An older run without all_tracks.csv must request reprocessing. Replacing the source video must prevent export from stale tracking data.
+- Review the whole combined video visually. Synthetic export tests do not establish identity accuracy on real footage.

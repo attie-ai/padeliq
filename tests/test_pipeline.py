@@ -62,6 +62,8 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(summary['first_loss_frame'],3)
         self.assertEqual(summary['first_loss_reason'],'selected_tracker_id_missing_timeout')
         self.assertEqual(summary['tracked_frames'],1)
+        with (self.root/'run'/'all_tracks.csv').open() as f: saved=list(csv.DictReader(f))
+        self.assertEqual([r['tracker_id'] for r in saved],['7','8','8'])
     def test_suspicious_jump_stays_lost(self):
         summary=self.run_sequence([([7],[[20,20,40,80]]),([7],[[100,20,120,80]]),([7],[[20,20,40,80]])])
         self.assertEqual(summary['first_loss_reason'],'implausible_box_motion_or_scale')
